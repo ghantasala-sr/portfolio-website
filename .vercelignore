@@ -1,0 +1,11 @@
+# Local secrets never travel to a deployment. Production values come from the
+# Vercel project's own environment variables. Without this, a `vercel deploy`
+# from a machine that has a .env.local could ship a development password.
+.env
+.env.local
+.env.*.local
+
+# Rebuilt on Vercel, no reason to upload.
+node_modules
+.next
+.git
