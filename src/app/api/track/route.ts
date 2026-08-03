@@ -43,8 +43,13 @@ export async function POST(request: Request) {
     });
 
     return new Response(null, { status: 204 });
-  } catch {
-    // Never let analytics break a page load, and never leak why it failed.
+  } catch (err) {
+    // Never let analytics break a page load, and never leak why it failed to the
+    // visitor. It still has to be diagnosable though: swallowing this entirely
+    // made a bad Upstash credential indistinguishable from a working one, since
+    // both paths return 204. The message carries the status and body of the
+    // failed Redis call, never the token, which travels in a header.
+    console.error("[track] failed to record view:", err);
     return new Response(null, { status: 204 });
   }
 }
