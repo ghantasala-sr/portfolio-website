@@ -24,6 +24,29 @@ One content field is unfilled: the containing **book title** for the Taylor &
 Francis chapter in `src/content/experience.ts` (their CDN blocks automated fetches,
 so authors/DOI/publisher are there but the book title is not).
 
+## Deploying
+
+Live at **portfolio-gsr.vercel.app**, served by the Vercel project `portfolio-gsr`
+(id `prj_XafDPcMEGShoCwpeHNNigPkzH1Vl`). Source of truth is
+`ghantasala-sr/portfolio-website` on `master`.
+
+**That project has no Git connection, so pushing to GitHub does not deploy.**
+Worth stating plainly because it is easy to lose an afternoon to: a push
+succeeds, nothing changes, and the old deployment keeps serving from cache as
+though the build simply had not finished.
+
+```bash
+npx vercel --prod   # what actually updates the live site
+```
+
+To make pushes deploy on their own, authorize Vercel's GitHub App for the
+`ghantasala-sr` account, then run `npx vercel git connect`. Until that
+authorization exists, `git connect` fails with a generic "make sure you have
+access" error that does not name the real cause.
+
+There is also a second, unrelated project `portfolio-website-gsr` whose newest
+deployment predates this rebuild. It does not serve this URL.
+
 ## The private dashboard at `/admin`
 
 Visitor counts, visible only to you. It is not linked from anywhere on the site,
