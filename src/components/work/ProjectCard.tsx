@@ -46,7 +46,9 @@ export function ProjectCard({
         )}
       </div>
 
-      <p className="mb-5 text-[0.9375rem] leading-relaxed text-text-dim">
+      {/* ragged: a tagline is one or two lines in a narrow grid column, which is
+          the one shape justification cannot flatter. */}
+      <p className="ragged mb-5 text-[0.9375rem] leading-relaxed text-text-dim">
         {project.tagline}
       </p>
 

@@ -38,7 +38,9 @@ export default function Home() {
         <SectionHead index="01" label="About" />
         <div className="grid gap-x-14 gap-y-10 lg:grid-cols-[1.5fr_1fr]">
           <div>
-            <Reveal as="p" className="text-d3 leading-[1.3]">
+            {/* ragged: at display size each word is wide, so a justified line
+                has only a handful of gaps to absorb the slack. */}
+            <Reveal as="p" className="ragged text-d3 leading-[1.3]">
               {profile.aboutShort}
             </Reveal>
             <Reveal

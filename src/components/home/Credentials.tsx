@@ -75,8 +75,10 @@ export function Credentials() {
                       {p.title}
                     </h3>
                   </div>
+                  {/* ragged: a journal line is a citation, not prose, and it
+                      wraps to two lines at most. */}
                   <p
-                    className="mt-2 text-[0.875rem] leading-relaxed"
+                    className="ragged mt-2 text-[0.875rem] leading-relaxed"
                     style={{ color: "var(--muted)" }}
                   >
                     {p.venue}

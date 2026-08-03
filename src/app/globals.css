@@ -158,6 +158,43 @@ h4 {
 
 p {
   text-wrap: pretty;
+  text-align: justify;
+  /* Hyphenation is not optional here. Justifying without it forces the browser
+     to absorb every leftover pixel into the word gaps, which is what opens the
+     vertical "rivers" that make justified web text look worse than ragged
+     right. Hyphens let it break a long word instead. This works because <html>
+     carries lang="en"; without a language the browser has no dictionary and
+     silently does nothing. */
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  /* Only break words of 6+ characters, and never leave a fragment shorter than
+     3 on either side of the break. Without this the engine is free to produce
+     "a-bout" or strand two letters on their own line, which costs more than the
+     tighter word gaps buy. Unsupported browsers just use the default limits. */
+  hyphenate-limit-chars: 6 3 3;
+}
+
+/* Mono metadata opts out. It is uppercase, usually a short phrase, and often
+   the only thing on its line, so justification stretches its few word gaps to
+   absurd widths, and hyphenation splits tokens that are meant to read whole
+   (a stack line, a date range, a file path). */
+/* `.ragged` is the same opt-out for prose that simply has too few words per
+   line for justification to disappear. Two cases, both measured rather than
+   guessed: a card summary in a 361px column and a lead paragraph set at
+   display size. Each had a first line stretched by a third, because two lines
+   of text give justify only one line to absorb all the slack.
+
+   These selectors stay unlayered and element-qualified on purpose. The base
+   `p` rule above is unlayered too, and unlayered CSS outranks every `@layer`,
+   so a Tailwind `@utility` would silently lose to it. */
+p.label,
+p.label-accent,
+p.font-mono,
+p.ragged,
+.font-mono p {
+  text-align: left;
+  -webkit-hyphens: manual;
+  hyphens: manual;
 }
 
 a {
