@@ -1,175 +1,442 @@
 @import "tailwindcss";
 
-@theme {
-  --color-background: #0A0A0F;
-  --color-surface: #12121A;
-  --color-surface-hover: #1A1A25;
-  --color-primary: #6366F1;
-  --color-primary-glow: #818CF8;
-  --color-accent: #22D3EE;
-  --color-accent-glow: #67E8F9;
-  --color-text: #F8FAFC;
-  --color-muted: #94A3B8;
-  --color-muted-light: #CBD5E1;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-glass: rgba(255, 255, 255, 0.04);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
+/* ── Theme tokens ─────────────────────────────────────────────────────────
+   Dark "instrument" is the default. Light "blueprint" is the alternate.
+   Both are plain custom properties so the WebGL layer can read them too
+   (see src/lib/theme/readTokens.ts) and the two never drift.
+   ──────────────────────────────────────────────────────────────────────── */
 
-  --font-heading: 'Space Grotesk', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #08090b;
+  --bg-raised: #0d0f13;
+  --surface: #101216;
+  --surface-hover: #16191f;
+  --line: #1e222a;
+  --line-strong: #2b313b;
+
+  /* Four text tiers, all of which carry information and therefore all of
+     which clear WCAG AA 4.5:1 against --bg. Verified, not eyeballed:
+     17.3 / 9.0 / 7.8 / 5.1. `--faint` was originally #4a5058 at 2.45:1,
+     which failed even the 3:1 non-text threshold while being used for stack
+     chips, fact citations and DOI lines. */
+  --text: #edeff2;
+  --text-dim: #a8afba;
+  --muted: #9aa2ad;
+  --faint: #7a828e;
+
+  --accent: #7df9c4;
+  --accent-dim: #4fd7a0;
+  --accent-glow: #7df9c4;
+  --warn: #ffb86b;
+  --crit: #ff7a7a;
+
+  /* Decorative overlays */
+  --grid-opacity: 0.025;
+  --grid-size: 32px;
+  --grain-opacity: 0.035;
+  --glow-strength: 1;
 }
 
-/* Base styles */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f7f6f3;
+  --bg-raised: #fffffe;
+  --surface: #ffffff;
+  --surface-hover: #f2f1ed;
+  --line: #dfddd6;
+  --line-strong: #c4c1b8;
+
+  /* Same rule in light: 17.5 / 9.5 / 5.6 / 4.8. The gap between the last two
+     is narrow because 4.5:1 on a light ground leaves little room: they are
+     differentiated by size and weight rather than by lightness alone. */
+  --text: #101114;
+  --text-dim: #3d4148;
+  --muted: #5c6270;
+  --faint: #676e7c;
+
+  --accent: #0b7a55;
+  --accent-dim: #0e9468;
+  --accent-glow: #12b37f;
+  --warn: #b45309;
+  --crit: #b42318;
+
+  /* Blueprint mode: the grid is the point, so it reads much stronger */
+  --grid-opacity: 0.5;
+  --grid-size: 24px;
+  --grain-opacity: 0.015;
+  --glow-strength: 0.55;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+
+  /* Display scale, clamped, so no breakpoint jumps in the hero.
+     d1 is sized so three lines plus the pill, subhead and CTA row all fit in
+     one viewport at 1280×720 without scrolling. */
+  --text-d1: clamp(2.125rem, 4.9vw, 4.5rem);
+  --text-d2: clamp(1.75rem, 3.4vw, 3rem);
+  --text-d3: clamp(1.375rem, 2.2vw, 1.875rem);
+
+  --radius-instrument: 2px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* NOTE: deliberately no `scroll-behavior: smooth` here. It fights Lenis
+   and produces scroll that argues with itself. */
 html {
-  scroll-behavior: smooth;
-  background-color: #0A0A0F;
-  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 6rem;
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text);
-  font-family: var(--font-body);
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition:
+    background-color 0.5s var(--ease-out-expo),
+    color 0.5s var(--ease-out-expo);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0A0A0F;
-}
-::-webkit-scrollbar-thumb {
-  background: #2A2A3A;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3A3A4A;
+/* Tailwind v4 changed the default border-color to currentColor. Put it back
+   to the token so `border` alone does the right thing everywhere. */
+*,
+::after,
+::before {
+  border-color: var(--line);
 }
 
-/* Selection */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  text-wrap: balance;
+  margin: 0;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: #F8FAFC;
+  background: var(--accent);
+  color: var(--bg);
 }
 
-/* Glass card utility class */
-.glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+/* ── Focus ────────────────────────────────────────────────────────────── */
+
+:focus {
+  outline: none;
 }
 
-.glass-card-hover {
-  transition: all 0.3s ease-out;
-}
-.glass-card-hover:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 1px;
 }
 
-/* Gradient text utility */
-.gradient-text {
-  background: linear-gradient(135deg, #6366F1, #22D3EE);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-text-warm {
-  background: linear-gradient(135deg, #6366F1, #A855F7, #EC4899);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Network background handled by canvas component (NetworkBackground.tsx) */
-
-
-/* Typing cursor */
-.typing-cursor {
-  display: inline-block;
-  width: 3px;
-  height: 1em;
-  background: #6366F1;
-  margin-left: 2px;
-  animation: blink-cursor 1s step-end infinite;
-  vertical-align: text-bottom;
-}
-
-@keyframes blink-cursor {
-  50% { opacity: 0; }
-}
-
-/* Glow effect on hover */
-.glow-hover {
-  transition: box-shadow 0.3s ease-out;
-}
-.glow-hover:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15), 0 0 40px rgba(99, 102, 241, 0.05);
-}
-
-/* Section divider */
-.section-divider {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
-}
-
-/* Timeline vertical line  */
-.timeline-line {
-  position: absolute;
-  left: 24px;
+.skip-link {
+  position: fixed;
   top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, rgba(99, 102, 241, 0.5), rgba(34, 211, 238, 0.5), transparent);
+  left: 50%;
+  z-index: 200;
+  translate: -50% -120%;
+  padding: 0.75rem 1.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: translate 0.25s var(--ease-out-expo);
 }
 
-@media (min-width: 768px) {
-  .timeline-line {
-    left: 50%;
-    transform: translateX(-50%);
+.skip-link:focus-visible {
+  translate: -50% 0;
+  outline-offset: -4px;
+}
+
+/* ── Utilities ────────────────────────────────────────────────────────── */
+
+@utility label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  line-height: 1;
+}
+
+@utility label-accent {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  line-height: 1;
+}
+
+@utility shell {
+  width: 100%;
+  max-width: 82rem;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+@utility prose-measure {
+  max-width: 68ch;
+}
+
+/* Hairline rule that reads as an instrument gridline, not a card border */
+@utility rule-t {
+  border-top: 1px solid var(--line);
+}
+
+/* ── Decorative overlays ──────────────────────────────────────────────────
+   One fixed element carries both the blueprint grid and the grain, so
+   switching themes only swaps opacity rather than re-rasterising anything. */
+
+.overlay-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--grid-opacity);
+  background-image:
+    linear-gradient(to right, var(--line-strong) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line-strong) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  transition:
+    opacity 0.5s var(--ease-out-expo),
+    background-size 0.5s var(--ease-out-expo);
+}
+
+.overlay-grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  transition: opacity 0.5s var(--ease-out-expo);
+  will-change: transform;
+  animation: grain-shift 8s steps(6) infinite;
+}
+
+@keyframes grain-shift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  16% {
+    transform: translate(-2%, 1%);
+  }
+  33% {
+    transform: translate(1%, -2%);
+  }
+  50% {
+    transform: translate(-1%, 2%);
+  }
+  66% {
+    transform: translate(2%, 1%);
+  }
+  83% {
+    transform: translate(-2%, -1%);
   }
 }
 
-/* Skill tag hover */
-.skill-tag {
-  transition: all 0.2s ease-out;
-  cursor: default;
-}
-.skill-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+/* ── Status pill ──────────────────────────────────────────────────────── */
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
 }
 
-/* Noise overlay for texture */
-.noise-overlay::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1000;
+.pulse-dot {
+  animation: pulse-dot 2.4s var(--ease-in-out-quart) infinite;
 }
 
-/* Reduced motion */
+/* ── Hero entrance ───────────────────────────────────────────────────────
+   Pure CSS, deliberately NOT GSAP. A JS-driven `fromTo` leaves the element at
+   its "from" state until the tick loop runs, in a background tab, or before
+   hydration, that means the LCP heading is invisible.
+
+   But CSS has the same hazard: animations are PAUSED in a hidden tab, so any
+   `both`/`backwards` fill whose `from` state hides the element hides it
+   indefinitely. Verified: with clip-path masking, the heading sat frozen at
+   `inset(0 0 105%)` in a background tab.
+
+   So there is a real tension: a masked reveal of the LCP element is
+   fundamentally at odds with LCP. Resolution: the heading animates TRANSFORM
+   ONLY and is painted and legible in every frame, including frame one and
+   including a paused animation. The masked/faded drama is reserved for
+   elements that are not LCP candidates. */
+
+@keyframes enter-rise {
+  from {
+    transform: translateY(0.2em);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `.enter-rise`, for headings, which are LCP candidates.
+   Transform only, and `backwards` rather than `both`: during the delay the
+   line sits 0.2em low but is fully painted. There is never a frame where the
+   heading is invisible, including before hydration and in a paused tab. */
+.enter-rise > span,
+.enter-rise.enter-self {
+  display: block;
+  animation: enter-rise 1.05s var(--ease-out-expo) backwards;
+}
+
+.enter-rise:nth-of-type(1) > span {
+  animation-delay: 0.08s;
+}
+.enter-rise:nth-of-type(2) > span {
+  animation-delay: 0.19s;
+}
+.enter-rise:nth-of-type(3) > span {
+  animation-delay: 0.3s;
+}
+
+/* `.enter-fade`: for everything that is NOT an LCP candidate. Opacity is
+   fine here, and above-the-fold supporting copy appearing a beat later is
+   the intended effect. */
+.enter-fade {
+  animation: enter-fade 0.9s var(--ease-out-expo) both;
+}
+
+.enter-fade[data-delay="1"] {
+  animation-delay: 0.32s;
+}
+.enter-fade[data-delay="2"] {
+  animation-delay: 0.42s;
+}
+.enter-fade[data-delay="3"] {
+  animation-delay: 0.52s;
+}
+.enter-fade[data-delay="4"] {
+  animation-delay: 0.62s;
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────────────
+   Opacity + translate, deliberately NOT clip-path.
+
+   A `clip-path: inset(0 0 100% 0)` hide state clips the element to zero
+   height, so its IntersectionObserver entry can never reach a non-zero
+   intersectionRatio, the element hides itself so thoroughly that the
+   observer meant to reveal it never fires, and the content stays invisible
+   forever. That shipped, and it blanked most of the page.
+
+   Opacity and visibility are explicitly ignored by IntersectionObserver, so
+   an opacity-based hide state cannot suppress its own trigger.
+
+   This is safe for LCP because `.reveal` is only ever used below the fold
+   above-the-fold headings use `.enter-rise`, which animates transform only
+   and is always painted. */
+
+.reveal {
+  opacity: 0;
+  translate: 0 1.25rem;
+  transition:
+    opacity 0.75s var(--ease-out-expo),
+    translate 0.75s var(--ease-out-expo);
+}
+
+.reveal[data-shown="true"] {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────
+   Everything decorative stops. Reveals jump straight to their end state
+   rather than being left mid-clip. */
+
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .bg-orb { animation: none !important; }
-  .typing-cursor { animation: none; opacity: 1; }
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    translate: none;
+  }
+
+  .overlay-grain {
+    animation: none;
   }
 }
