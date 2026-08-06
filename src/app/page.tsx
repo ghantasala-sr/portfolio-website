@@ -10,17 +10,8 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { Reveal } from "@/components/ui/Reveal";
 import { ProjectCard } from "@/components/work/ProjectCard";
 import { featuredProjects, projects } from "@/content/projects";
+import { projectCount, spellOut, spellOutLower } from "@/content/counts";
 import { profile } from "@/content/profile";
-
-/** Small numbers read better spelled out in a headline than as digits. */
-const NUMBER_WORDS = [
-  "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
-  "Nine", "Ten", "Eleven", "Twelve",
-];
-
-function spellOut(n: number): string {
-  return NUMBER_WORDS[n] ?? String(n);
-}
 
 /** The lead four get the large treatment; the rest are compact. */
 const LEAD_COUNT = 4;
@@ -98,16 +89,17 @@ export default function Home() {
       <StatStrip />
 
       {/* Selected work.
-          Two tiers rather than ten equal cards: a featured card carries the
-          full summary and four facts, so ten of them would run to twice the
-          height of the rest of the page combined. The lead four get that
-          treatment; the remaining six are compact and three-up. */}
+          Two tiers rather than a row of equal cards: a featured card carries
+          the full summary and four facts, so every featured project at that
+          size would run to twice the height of the rest of the page combined.
+          The lead four get that treatment; the remainder are compact and
+          three-up. Counts stay out of this comment because they change. */}
       <section id="work" className="shell py-20">
         <SectionHead
           index="02"
           label="Selected work"
           title={`${spellOut(featuredProjects.length)} systems, each with its architecture and the decisions behind it`}
-          intro="Every case study walks the real topology (drawn from the code, not the README), and every number links back to something checkable in the repository. The full index has all sixteen."
+          intro={`Every case study walks the real topology (drawn from the code, not the README), and every number links back to something checkable in the repository. The full index has all ${spellOutLower(projectCount)}.`}
           action={
             <Link
               href="/work"

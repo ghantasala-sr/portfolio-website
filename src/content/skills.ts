@@ -1,3 +1,4 @@
+import { projects } from "./projects";
 import type { SkillGroup } from "./types";
 
 /**
@@ -165,7 +166,9 @@ export const verifiedStats = [
     detail: "Northeastern University",
   },
   {
-    value: "16",
+    // Derived, because a hand-written count here went stale the first time a
+    // project was added: the strip claimed 16 while the grid rendered 17.
+    value: String(projects.length),
     suffix: "",
     label: "public repositories shipped",
     detail: "every project on this site links to its source",

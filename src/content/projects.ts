@@ -17,6 +17,86 @@ const GH = "https://github.com/ghantasala-sr";
  */
 export const projects: Project[] = [
   {
+    slug: "adsight",
+    name: "AdSight",
+    tagline: "Ad campaign dashboard over 10,000 rows, measured against a naive build",
+    summary:
+      "A campaign performance dashboard where the engineering claims are backed by committed measurement artifacts. An Express BFF fans out to four simulated upstreams and serves the same aggregator over both REST and GraphQL. The table renders 10,000 rows virtualized and memoized, benchmarked against a deliberately naive implementation kept in the repo so the comparison can be rerun. A natural-language query bar proposes a filter and waits for a person to accept it.",
+    lane: "full-stack",
+    lanes: ["full-stack", "agentic-ai", "infra"],
+    stack: [
+      "TypeScript",
+      "Next.js",
+      "React Query",
+      "Redux Toolkit",
+      "Express 5",
+      "GraphQL",
+      "Turborepo",
+      "Vitest",
+      "Playwright",
+      "Google Cloud Run",
+      "Vertex AI / Gemini 2.5 Flash",
+      "zod",
+    ],
+    facts: [
+      {
+        value: "190x",
+        label: "faster mount at 10,000 rows",
+        source: "perf/render.json: 6,472 ms naive against 34 ms virtualized, median of 5 headless runs",
+      },
+      {
+        value: "463",
+        label: "DOM elements, against 510,025 naive",
+        source: "perf/render.json at 10,000 rows. Constant cost: 34 ms at 1,000 rows too",
+      },
+      {
+        value: "145",
+        label: "tests, run in CI on every push",
+        source: "135 Vitest across three workspaces plus 10 Playwright e2e, counted in the repo",
+      },
+      {
+        value: "+0.1%",
+        label: "bundle change from deferring my own components",
+        source: "perf/bundle.json: 150.8 against 150.9 kB gzip. Measured, and reported as a non-result",
+      },
+    ],
+    repo: `${GH}/AdCampaign-Dashboard`,
+    live: "https://adsight-web-p7zkgdrfpa-uc.a.run.app",
+    period: "2026",
+    featured: true,
+    hasDiagram: true,
+    caseStudy: {
+      problem:
+        "A table of 10,000 rows is where a dashboard usually stops being pleasant. The natural implementation puts every row in the DOM, formats each cell as it renders, and re-renders all of them whenever anything changes. It works at a hundred rows and quietly stops working somewhere before ten thousand, and because it degrades gradually there is rarely a moment where anyone decides to fix it. The other half of the problem is that a filtered query over that many records touches several backing services, and doing that work in the wrong order makes the expensive parts run on rows that were about to be discarded.",
+      approach:
+        "The dashboard is a Turborepo monorepo with a Next.js front end and an Express BFF, deployed as two Cloud Run services. The BFF fans out to four simulated upstreams and joins them in a deliberate order: cheap config predicates cut 10,000 campaigns to a few hundred, the metrics rollup scans only those survivors as a contiguous Int32Array, and the two page-scoped upstreams run last on a single sliced page of 50. The same aggregator serves REST and GraphQL. On the client, Redux holds the question and React Query holds the answer, joined by one memoized selector that is simultaneously the cache key, the request URL and the browser URL. The naive table implementation stays in the repo next to the optimized one, and a harness at /perf mounts both over the same rows and times them.",
+      decisions: [
+        {
+          title: "Keep the slow implementation in the repo",
+          body: "CampaignTableNaive is not dead code, it is the control. Without it the optimization is an assertion; with it the comparison is a command anyone can rerun. It is also what makes the result honest about its own limits: the scroll figure is bounded by the display refresh rate, so the 4.1x there is a floor rather than a measurement of headroom.",
+        },
+        {
+          title: "Order the fan-out by cost, not by dependency",
+          body: "Filtering on config before rolling up metrics is what makes a threshold query over 10,000 campaigns affordable, because reporting only ever scans rows that already survived the cheap predicates. Fetching catalog and pacing after the page slice turns what would be a hundred upstream calls into two batched ones.",
+        },
+        {
+          title: "One selector as cache key, request URL and address bar",
+          body: "Because all three derive from the same memoized string, they cannot disagree. Opening the filter panel produces the same string and so does not refetch, and there is a test asserting exactly that. A filtered view is a shareable link parsed by the same codec on both sides.",
+        },
+        {
+          title: "The model proposes, a person applies",
+          body: "The query bar streams a rationale token by token and renders the result as reviewable chips, with anything it could not express shown as prominently as what it could. Nothing touches the view until it is accepted, and accepting dispatches the same action URL hydration uses, so an AI-built filter is indistinguishable from a hand-built one.",
+        },
+        {
+          title: "Partial failure as a route, not an exception",
+          body: "The budget upstream fails 6% of the time by default. The aggregator catches that specific error, returns a null pacing column and names the failure in the response so the UI shows a banner. Anything that is not an upstream-unavailable error is rethrown as a 500, and a test asserts the distinction, because a real bug must not be silently downgraded to a missing column.",
+        },
+      ],
+      learned:
+        "The bundle work is the part I would keep. Deferring three of my own components measured as a 0.1% change, which is nothing, and the repo says so rather than dressing it up. What the measurement did find was a real problem I could not have read my way to: routing those components through one barrel module registered a 108 kB charting library against a route that draws no charts, because a route's chunk list includes everything its imports reference even when execution is deferred. The tell was that the before and after came out identical, which was implausible enough to dig into. I have started treating a suspiciously flat result as a finding rather than a null.",
+    },
+  },
+  {
     slug: "argus",
     name: "Argus",
     tagline: "Event-driven multi-agent AI code review on AWS",

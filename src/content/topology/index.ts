@@ -1,4 +1,5 @@
 import type { Topology } from "./types";
+import { adsightTopology } from "./adsight";
 import { argusTopology } from "./argus";
 import { observeaiTopology } from "./observeai";
 import { secsignalTopology } from "./secsignal";
@@ -22,6 +23,7 @@ import {
 
 /** Keyed by project slug, so a card or page resolves its own topology. */
 export const topologies: Record<string, Topology> = {
+  adsight: adsightTopology,
   argus: argusTopology,
   observeai: observeaiTopology,
   secsignal: secsignalTopology,
@@ -45,6 +47,7 @@ export function getTopology(slug: string): Topology | undefined {
 }
 
 export * from "./types";
+export { adsightRender } from "./adsight";
 export { observeaiScenarios } from "./observeai";
 export { cloudtaskSecurityChain } from "./cloudtask";
 export { lincolnKappa } from "./lincoln";
