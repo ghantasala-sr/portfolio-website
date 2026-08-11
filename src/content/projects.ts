@@ -410,34 +410,41 @@ export const projects: Project[] = [
   {
     slug: "docintel",
     name: "DocIntel",
-    tagline: "Serverless document intelligence, built level by level",
+    tagline: "A serverless GCP platform, then a multi-agent assistant over its data",
     summary:
-      "Upload a document and get back a summary, extracted entities and a document type, with the heavy work fully decoupled. Cloud Run accepts the upload, writes to storage and returns immediately; a storage notification fans out through Pub/Sub to a Cloud Function that calls Gemini with a constrained output schema and merges the result into the same Firestore record. Built deliberately as a progression from a single container to least-privilege service accounts, CI and Terraform.",
-    lane: "infra",
-    lanes: ["infra", "agentic-ai"],
+      "Two halves on one platform. A document pipeline where Cloud Run takes the upload and returns immediately, a storage notification triggers a Go Cloud Function, and Gemini returns schema-constrained JSON into Firestore. Then a LangGraph supervisor over six agents that answers questions about the data, routing each turn to one specialist and enforcing a single rule: exact figures come from BigQuery over text-to-SQL, narrative comes from vector search, and numbers are never read out of an embedding. Built level by level, with the agent layer added after the platform was finished rather than planned into it.",
+    lane: "agentic-ai",
+    lanes: ["agentic-ai", "infra", "data-eng"],
     stack: [
       "Python",
       "Go",
       "FastAPI",
+      "LangGraph",
       "Cloud Run",
       "Cloud Functions",
       "Pub/Sub",
-      "Firestore",
+      "Firestore vector search",
+      "BigQuery",
       "Vertex AI",
-      "Gemini 2.5 Flash",
+      "Gemini",
       "Terraform",
       "Cloud Build",
     ],
     facts: [
       {
-        value: "L0→L5",
-        label: "levels completed, each with a decision log",
-        source: "docs/architecture.md",
+        value: "6",
+        label: "agents behind one supervisor",
+        source: "services/agent/multiagent.py: supervisor, four ReAct specialists, synthesizer",
       },
       {
-        value: "Go",
-        label: "processor rewritten from Python, same trigger",
-        source: "Cloud Functions gen2, go126 runtime",
+        value: "150",
+        label: "real CFPB mortgage complaints, queried both ways",
+        source: "ingest_cfpb.py TOTAL = 150 from the public consumerfinance.gov API",
+      },
+      {
+        value: "L0→L5",
+        label: "levels, each recording what broke",
+        source: "docs/architecture.md, then extended with the RAG and agent layer",
       },
       {
         value: "2",
@@ -446,14 +453,15 @@ export const projects: Project[] = [
       },
     ],
     repo: `${GH}/DocIntel`,
+    live: "https://docintel-api-825091457104.us-central1.run.app/",
     period: "2026",
     featured: true,
     hasDiagram: true,
     caseStudy: {
       problem:
-        "Document processing with a language model is slow enough that doing it inside the request is the wrong design, but the naive fix (a background thread) loses work on restart and gives you nothing to observe. I also wanted to build cloud architecture the way it is actually learned, one constraint at a time, rather than starting from a finished diagram.",
+        "Document processing with a language model is slow enough that doing it inside the request is the wrong design, but the naive fix (a background thread) loses work on restart and gives you nothing to observe. I also wanted to build cloud architecture the way it is actually learned, one constraint at a time, rather than starting from a finished diagram. The second problem arrived once the data was in place: a single assistant asked to handle both precise figures and open questions will happily answer a revenue question from a paragraph it retrieved, and be confidently wrong by a rounding error or an order of magnitude.",
       approach:
-        "The upload endpoint writes the blob to Cloud Storage, creates a Firestore record marked processing, and returns immediately. A storage finalize notification publishes to Pub/Sub, which triggers a Cloud Function that calls Gemini through Vertex AI with a response schema constraining the output shape, then merges the summary, entities and document type into the same Firestore record and marks it done. A separate scheduled path computes statistics. The repo is organised as six levels, each recording what broke and why.",
+        "The upload endpoint writes the blob to Cloud Storage, creates a Firestore record marked processing, and returns immediately. A storage finalize notification publishes to Pub/Sub, which triggers a Go Cloud Function that calls Gemini through Vertex AI with a response schema constraining the output shape, then merges the summary, entities and document type into the same Firestore record and marks it done. A separate scheduled path computes statistics. On top of that platform sits a LangGraph supervisor: it routes each turn to one of four ReAct specialists, and a synthesizer writes the final answer and names the agent that produced it. Financial figures and complaint counts resolve through text-to-SQL against BigQuery, narrative questions through Firestore vector search, and the retrieval graph abstains rather than answering when its distance gate or groundedness check fails.",
       decisions: [
         {
           title: "Return before the work is done",
@@ -475,9 +483,17 @@ export const projects: Project[] = [
           title: "Retire broad IAM as a distinct step",
           body: "An early level used a broad editor role to get moving; a later one replaced it with per-service least-privilege accounts. Recording that transition, including the outage it caused, is more honest than presenting the end state as if it were the plan.",
         },
+        {
+          title: "Numbers from SQL, narrative from vectors",
+          body: "The specialists are split along that line rather than by topic. A question about revenue or a complaint count becomes a generated SELECT against BigQuery, and only prose questions go to vector search. Embeddings are good at finding the paragraph that discusses a figure and useless at guaranteeing the figure, so the boundary is enforced by which tool each agent holds rather than by asking the model to be careful.",
+        },
+        {
+          title: "One specialist per turn, and a graph that abstains",
+          body: "The supervisor commits to a single specialist and then synthesizes, which keeps a turn debuggable: the answer names the agent that produced it. The retrieval graph grades its own results against a cosine-distance gate, rewrites the query once, checks the generated answer for groundedness, and returns nothing rather than something unsupported.",
+        },
       ],
       learned:
-        "Building this in levels rather than all at once changed what I learned. Each level failed in a specific way, a missing ignore file silently changed the build system, an IAM grant that only surfaced at inference time, and writing those down as they happened produced a far more useful document than any architecture diagram I would have drawn up front.",
+        "Building this in levels rather than all at once changed what I learned. Each level failed in a specific way, a missing ignore file silently changed the build system, an IAM grant that only surfaced at inference time, and writing those down as they happened produced a far more useful document than any architecture diagram I would have drawn up front. The agent layer taught me the same lesson from the other direction. It went on top of a finished platform rather than into the plan, and it only worked once I stopped treating retrieval as a general answer engine and gave the precise questions their own path to a database.",
     },
   },
 

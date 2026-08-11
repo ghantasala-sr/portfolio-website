@@ -51,5 +51,5 @@ export { adsightRender } from "./adsight";
 export { observeaiScenarios } from "./observeai";
 export { cloudtaskSecurityChain } from "./cloudtask";
 export { lincolnKappa } from "./lincoln";
-export { docintelLevels } from "./docintel";
+export { docintelLevels, docintelAgentTopology } from "./docintel";
 export { mealmindEltTopology, mealmindAgentTopology } from "./mealmind";

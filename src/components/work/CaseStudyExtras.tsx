@@ -3,12 +3,43 @@ import {
   cloudtaskSecurityChain,
   lincolnKappa,
   docintelLevels,
+  docintelAgentTopology,
   mealmindAgentTopology,
 } from "@/content/topology";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Reveal } from "@/components/ui/Reveal";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { experience } from "@/content/experience";
+
+/**
+ * How many numbered sections each slug contributes here.
+ *
+ * The template continues its section numbering after these, and it used to
+ * assume every project contributed exactly one: projects with no extras skipped
+ * 03 entirely, and the first project to need two collided with the Decisions
+ * heading at 04. This map is what the template counts from, so it has to agree
+ * with the switch below.
+ */
+const EXTRA_SECTION_COUNTS: Record<string, number> = {
+  mealmind: 1,
+  observeai: 1,
+  cloudtask: 1,
+  "lincoln-judge-evals": 1,
+  "damg-7374-labs": 1,
+  docintel: 2,
+};
+
+export function extraSectionCount(slug: string): number {
+  return EXTRA_SECTION_COUNTS[slug] ?? 0;
+}
+
+/** Extras always start here, immediately after problem and how-it-works. */
+export const EXTRAS_START_INDEX = 3;
+
+/** Zero-padded section number, `pad(3)` giving "03". */
+export function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
 
 /**
  * Per-project detail that only makes sense for one project, the twelve
@@ -180,12 +211,28 @@ export function CaseStudyExtras({ slug }: { slug: string }) {
 
     case "docintel":
       return (
-        <section className="shell py-16">
+        <>
+          {/* Two architectures, like MealMind: the main diagram is the upload
+              pipeline, and the agent graph shares almost none of it. */}
+          <section className="shell py-16">
+            <SectionHead
+              index="03"
+              label="The agent half"
+              title="One supervisor, four specialists, one hard rule about numbers"
+              intro="Added after the platform was finished rather than planned into it. The split down the middle is the point: exact figures resolve through text-to-SQL against BigQuery, narrative through Firestore vector search, and the retrieval graph abstains rather than answering when its distance gate or groundedness check fails."
+            />
+            <ArchitectureDiagram
+              topo={docintelAgentTopology}
+              caption="DocIntel. The supervisor commits to one specialist per turn, so an answer can name the agent that produced it. Only the complaints analyst holds both tools, because complaint counts are a SQL question and complaint narratives are not."
+            />
+          </section>
+
+          <section className="shell py-16">
           <SectionHead
-            index="03"
+            index="04"
             label="Built in levels"
-            title="Six levels, each with what broke recorded as it happened"
-            intro="Building in stages rather than all at once meant each level failed in a specific way, and writing those down produced a more useful document than any diagram drawn up front."
+            title={`${docintelLevels.length} stages, each with what broke recorded as it happened`}
+            intro="Building this way meant each level failed in a specific way, and writing those down produced a more useful document than any diagram drawn up front."
           />
           <Reveal>
             <ol className="space-y-0">
@@ -211,7 +258,8 @@ export function CaseStudyExtras({ slug }: { slug: string }) {
               ))}
             </ol>
           </Reveal>
-        </section>
+          </section>
+        </>
       );
 
     case "damg-7374-labs": {

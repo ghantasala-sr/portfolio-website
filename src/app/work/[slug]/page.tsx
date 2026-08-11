@@ -7,7 +7,12 @@ import { getTopology } from "@/content/topology";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHead } from "@/components/ui/SectionHead";
-import { CaseStudyExtras } from "@/components/work/CaseStudyExtras";
+import {
+  CaseStudyExtras,
+  EXTRAS_START_INDEX,
+  extraSectionCount,
+  pad,
+} from "@/components/work/CaseStudyExtras";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -42,6 +47,11 @@ export default async function CaseStudyPage({
   const cs = project.caseStudy;
   const index = projects.findIndex((p) => p.slug === project.slug);
   const next = projects[(index + 1) % projects.length];
+
+  // The first section number after the project-specific extras. Derived, so a
+  // project with no extras does not skip a number and one with two does not
+  // collide with the heading that follows.
+  const afterExtras = EXTRAS_START_INDEX + extraSectionCount(project.slug);
 
   return (
     <article className="pb-24 pt-36">
@@ -176,13 +186,15 @@ export default async function CaseStudyPage({
             )}
           </section>
 
-          {/* Project-specific detail blocks */}
+          {/* Project-specific detail blocks. They occupy the numbers from
+              EXTRAS_START_INDEX onward, so everything after continues from
+              there rather than assuming a fixed count. */}
           <CaseStudyExtras slug={project.slug} />
 
           {/* Decisions */}
           <section className="shell py-16">
             <SectionHead
-              index="04"
+              index={pad(afterExtras)}
               label="Decisions worth defending"
               title="Why it is built this way"
             />
@@ -213,7 +225,7 @@ export default async function CaseStudyPage({
 
           {/* Learned */}
           <section className="shell py-16">
-            <SectionHead index="05" label="What I took from it" />
+            <SectionHead index={pad(afterExtras + 1)} label="What I took from it" />
             {/* Accent rule, because this is the paragraph worth reading if
                 you only read one. */}
             <Reveal className="border-l-2 border-l-[var(--accent)] pl-6">
@@ -236,7 +248,7 @@ export default async function CaseStudyPage({
 
       {/* Stack */}
       <section className="shell py-16">
-        <SectionHead index="06" label="Stack" />
+        <SectionHead index={pad(afterExtras + 2)} label="Stack" />
         <Reveal className="flex flex-wrap gap-x-3 gap-y-2">
           {project.stack.map((s) => (
             <span
