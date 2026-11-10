@@ -1,5 +1,8 @@
 import type { Topology } from "./types";
 import { adsightTopology } from "./adsight";
+import { gatekeeperTopology } from "./gatekeeper";
+import { gatekeeperEnclaveTopology } from "./gatekeeperEnclave";
+import { voicedeskTopology } from "./voicedesk";
 import { argusTopology } from "./argus";
 import { observeaiTopology } from "./observeai";
 import { secsignalTopology } from "./secsignal";
@@ -23,6 +26,9 @@ import {
 
 /** Keyed by project slug, so a card or page resolves its own topology. */
 export const topologies: Record<string, Topology> = {
+  gatekeeper: gatekeeperTopology,
+  "gatekeeper-enclave": gatekeeperEnclaveTopology,
+  voicedesk: voicedeskTopology,
   adsight: adsightTopology,
   argus: argusTopology,
   observeai: observeaiTopology,
@@ -48,6 +54,9 @@ export function getTopology(slug: string): Topology | undefined {
 
 export * from "./types";
 export { adsightRender } from "./adsight";
+export { gatekeeperLayers } from "./gatekeeper";
+export { enclaveDrills } from "./gatekeeperEnclave";
+export { voicedeskResults } from "./voicedesk";
 export { observeaiScenarios } from "./observeai";
 export { cloudtaskSecurityChain } from "./cloudtask";
 export { lincolnKappa } from "./lincoln";

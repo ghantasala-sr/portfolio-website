@@ -8,8 +8,8 @@ import { LANES, type Lane } from "./types";
  * Nodes are repositories, clustered by lane and sized by stack breadth. Edges
  * are shared tooling, but weighted by how RARE the shared technology is.
  *
- * Rarity weighting is the whole trick. Twelve of seventeen projects use Python and
- * seven use FastAPI, so an unweighted overlap connects almost everything and
+ * Rarity weighting is the whole trick. Most of these projects use Python and
+ * many use FastAPI, so an unweighted overlap connects almost everything and
  * says nothing: "Argus relates to SecSignal because both use Python" is noise.
  * Weighting each shared technology by log(N / count) means ClickHouse and SigNoz
  * (two projects each) dominate while Python contributes almost nothing, and what

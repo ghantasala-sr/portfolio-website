@@ -17,6 +17,241 @@ const GH = "https://github.com/ghantasala-sr";
  */
 export const projects: Project[] = [
   {
+    slug: "gatekeeper",
+    name: "Gatekeeper",
+    tagline: "A multi-tenant AI assistant where Postgres, not the model, decides what you see",
+    summary:
+      "Two fictional companies share one deployment, each signing in through its own identity provider, and each employee's clearance is enforced by the database rather than by asking the model to behave. A LangGraph agent holds exactly one tool, which searches inside the signed-in user's row-level-security context, so forbidden passages are not refused by the model, they are never retrieved. Every answer carries the backend's own trace of each check, and the whole access matrix is covered by tests against a real Postgres.",
+    lane: "full-stack",
+    lanes: ["full-stack", "agentic-ai", "infra"],
+    stack: [
+      "Python",
+      "FastAPI",
+      "PostgreSQL 16",
+      "pgvector",
+      "Row-level security",
+      "OIDC",
+      "SAML 2.0",
+      "SCIM 2.0",
+      "LangGraph",
+      "Claude",
+      "Next.js",
+      "Keycloak",
+    ],
+    facts: [
+      {
+        value: "15 → 0",
+        label: "forbidden passages reaching the model",
+        source: "docs/SECURITY.md: three ordinary questions sent 15 of 15 with prompt-only rules, 0 with RLS",
+      },
+      {
+        value: "225",
+        label: "tests against a real Postgres, plus 3 live",
+        source: "Counted per file: 24 matrix, 73 identity, 28 RLS, 23 SCIM and the rest. CI runs them on a fresh pgvector",
+      },
+      {
+        value: "7",
+        label: "independent layers, any one of which stops a leak",
+        source: "IdP, bridge, token re-check, least-privilege role, RLS, tool sandbox, audit",
+      },
+      {
+        value: "0",
+        label: "rows visible without a role, not even public",
+        source: "migrations/005_rls_role.sql: the restrictive policy's ELSE branch is false",
+      },
+    ],
+    repo: `${GH}/GateKeeper`,
+    period: "2026",
+    featured: true,
+    hasDiagram: true,
+    caseStudy: {
+      problem:
+        "A user can type anything into an AI chat, including an instruction to ignore its rules and show another company's financial plan. If the only thing standing between that user and the data is the model choosing to refuse, then a good enough prompt eventually gets through, and the refusal is not even the interesting failure: by the time the model declines, the data has already left the database and been placed in its context. The question is not how to make a model refuse reliably. It is how to make sure it never holds anything it should not.",
+      approach:
+        "Authorization lives in Postgres. Each tenant maps to the identity provider that signed its logins, so the tenant is derived from a verified issuer rather than anything the user sends. A login becomes a 15-minute RS256 token, and the user is re-read as active and same-role on every request, which is how a deactivation takes effect on the next call instead of when a token expires. Each request opens a transaction, sets the tenant and role as transaction-local settings, and runs as a database role that is not the owner and holds no BYPASSRLS. A permissive tenant policy and a restrictive role policy then filter every read. The agent runs inside that context with one tool that accepts a query string and nothing else, so the model chooses the words it searches for and has no other influence on what comes back.",
+      decisions: [
+        {
+          title: "The model is never the security guard",
+          body: "With the rules written only into the system prompt, three ordinary questions from an employee pulled 15 of 15 forbidden passages into the model's context, including another tenant's salary bands. The model happened to refuse all three. Moving the rule into a restrictive row-level-security policy takes the same three questions to 0 retrieved. What the model never receives, it cannot repeat, and that is a property rather than a behaviour.",
+        },
+        {
+          title: "An unknown role sees nothing, not even public",
+          body: "The restrictive policy's final branch is false rather than a public default. A request that somehow forgot to set its role returns an empty result instead of quietly degrading to the most permissive view, which is the direction a security control should fail in.",
+        },
+        {
+          title: "Derive the tenant from who signed the login",
+          body: "The bridge maps a verified issuer to a tenant and takes the lowest role the claims support. Nothing about the tenant comes from the request body, a header or a token the client could shape, and the OIDC issuer and SAML entity ID are pinned to configuration rather than trusted from a discovery document.",
+        },
+        {
+          title: "Hold the audit log at arm's length from the app",
+          body: "The application role has INSERT on the audit table and not SELECT, so a compromised application can write its own trail but cannot read or erase it. Each chat records the exact chunk IDs handed to the model, which is what makes the independent re-check meaningful rather than decorative.",
+        },
+        {
+          title: "Turn the tool boundary into a test",
+          body: "The agent's schema sets additionalProperties false, so a call carrying a tenant_id or role is rejected with an error rather than silently ignored, and a test asserts the rejection. Another asserts the tool returns exactly what a direct search returns, which is the only way to know the agent path has not grown a second opinion about access.",
+        },
+      ],
+      learned:
+        "The thing I did not expect was the approximate index. Vector search with an HNSW index returns candidates first and lets row-level security filter them afterwards, so an employee asking about salaries got zero results rather than the five public ones they were entitled to: the index had handed back only rows the policy then removed. Enabling iterative scans fixed it. It taught me that adding an authorization layer underneath a retrieval system changes the retrieval system's behaviour, and that correctness here was not just about what leaks out but about what stops coming back.",
+    },
+  },
+  {
+    slug: "gatekeeper-enclave",
+    name: "Gatekeeper Enclave",
+    tagline: "The same assistant, sealed into a GCP network with no route to the internet",
+    summary:
+      "A companion deployment that puts Gatekeeper into a private GCP project with no NAT, no internet route and no external IP, where the only way out is Google's restricted API range and the only way in is an IAP tunnel to a bastion. Releases arrive as one checksummed offline bundle because nothing inside can download anything. Every guarantee it claims was drilled on the running system and written up with timings, including the two drills that failed on the first attempt.",
+    lane: "infra",
+    lanes: ["infra"],
+    stack: [
+      "Terraform",
+      "GKE private cluster",
+      "Cloud SQL 17",
+      "Helm",
+      "Binary Authorization",
+      "Workload Identity",
+      "Secret Manager",
+      "Vertex AI / Gemini",
+      "IAP",
+      "Cloud Monitoring",
+      "k6",
+    ],
+    facts: [
+      {
+        value: "0",
+        label: "failed requests through upgrade, rollback and failover",
+        source: "docs/drills: upgrade and HA drills under k6 load, each passed on a second attempt after a documented failure",
+      },
+      {
+        value: "24 min",
+        label: "to recover from a deletion, against a 60-minute target",
+        source: "docs/drills/2026-10-23-restore.md: RTO 24 minutes, RPO about 5 seconds",
+      },
+      {
+        value: "~3.5 min",
+        label: "from an egress attempt to the alert firing",
+        source: "docs/drills/2026-10-23-egress-alert.md",
+      },
+      {
+        value: "10",
+        label: "Terraform modules, with a CI guard against drifting open",
+        source: "proof/check_terraform_plan.py rejects NAT, 0.0.0.0/0 routes, external IPs and public endpoints",
+      },
+    ],
+    repo: `${GH}/GateKeeper-enclave`,
+    period: "2026",
+    featured: true,
+    hasDiagram: true,
+    caseStudy: {
+      problem:
+        "A customer whose security team will not allow outbound internet cannot run most AI applications at all, because the usual deployment assumes a model behind a public API, images pulled at deploy time, and packages installed on the fly. Saying a system is air-gapped is easy. The harder question is whether the claim survives contact with an operator: whether a release can actually get in, whether a failover drops requests, whether a restore meets its target, and whether anyone has ever checked rather than assumed.",
+      approach:
+        "The network is built with no NAT, no default route and no external IPs, so its only egress is Google's restricted API range, which is also how it reaches Gemini on Vertex. That constraint is what swapped the model: the application repo calls Claude over the public internet, which here would be an egress violation. A deny-all egress firewall logs every attempt and raises an alert. Releases are built on a separate machine into one checksummed bundle carrying images, chart, SBOMs and signatures, and the installer on the bastion verifies each pushed digest against the signed one before Binary Authorization will admit it. Pods use Workload Identity with no service-account keys, and secrets arrive from Secret Manager as mounted files rather than Kubernetes Secrets. Ten Terraform modules describe the whole thing, and a plan guard rejects any change that would reintroduce a route out.",
+      decisions: [
+        {
+          title: "Make the network unable to drift open",
+          body: "A guard reads every Terraform plan and fails on a Cloud NAT, a route to anywhere, an external IP, a public GKE control plane or a Cloud SQL public address. The point is that zero egress is a property someone can reinstate by accident in one line, so the check belongs in the pipeline rather than in a reviewer's memory. The guard has its own unit tests, which run in CI.",
+        },
+        {
+          title: "Ship releases as a bundle, because nothing can download",
+          body: "The build machine records each image digest, generates an SBOM and signs every digest. The bastion verifies checksums, pushes, confirms each pushed digest matches the signed one, and installs the chart by digest. Binary Authorization then refuses anything unsigned, which the supply-chain drill proved by pushing a tampered image under the release's own tag and watching it get refused and logged.",
+        },
+        {
+          title: "Drill the claims, and keep the failures",
+          body: "Each guarantee has a script in proof/ and a dated write-up in docs/drills/. The upgrade drill and the node-drain drill both failed the first time and the write-ups say so, along with what changed. A drill that has never failed has mostly tested the person writing it, so the first attempts are the most useful artifacts in the repository.",
+        },
+        {
+          title: "Separate the recovery target from the recovery time",
+          body: "The restore drill set an RPO of 15 minutes and an RTO of an hour, then measured about 5 seconds and 24 minutes. Nearly all the 24 went to Cloud SQL cloning, and the drill found that the clone command gives up after 10 minutes while this clone took 24, so the script now starts it and polls instead of waiting on the call.",
+        },
+        {
+          title: "State what is not hardened",
+          body: "Keycloak runs as a single replica, VPC Service Controls are absent because they need a Google Cloud Organization this project does not have, and the private CA is a Terraform-managed key where production would use Certificate Authority Service. None of those undo zero egress, and listing them is cheaper than having a security reviewer find them.",
+        },
+      ],
+      learned:
+        "The game day was worth more than any individual drill. Three failures at once, fixed using nothing but the runbook, took 11 minutes 54 seconds, and about 9 of those went to a gap in the runbook rather than to the failures themselves. Fixing the document brought the expected time to roughly 3 minutes. I had been treating the runbook as documentation of the system, and it is better understood as part of the system, with its own failure modes and its own need to be exercised.",
+    },
+  },
+  {
+    slug: "voicedesk",
+    name: "VoiceDesk",
+    tagline: "A voice support agent that checks every sentence for grounding before it is spoken",
+    summary:
+      "A real-time phone-support agent that answers from a policy knowledge base, takes actions through tools, and hands off to a human with a written summary when it is not confident. The engine is domain-agnostic; the reference deployment is tier-one support for a fictional ticketing company. What distinguishes it is the measurement: every number it reports comes from a dated run directory, the improvements are paired significance tests on identical seeds, and the figures produced without a live model are labelled as such everywhere rather than left to imply more than they show.",
+    lane: "ml-eval",
+    lanes: ["ml-eval", "agentic-ai", "full-stack"],
+    stack: [
+      "Python",
+      "Pipecat",
+      "Silero VAD",
+      "Deepgram",
+      "Cartesia",
+      "PostgreSQL",
+      "pgvector",
+      "BM25 + RRF",
+      "Vertex AI / Gemini 2.5 Flash",
+      "OpenTelemetry",
+      "FastAPI",
+    ],
+    facts: [
+      {
+        value: "p = 1.5e-5",
+        label: "McNemar exact, containment 0.737 to 0.793",
+        source: "results/2026-10-15-feedback-cycle/metrics.json: 300 calls, identical seeds, paired +17 and -0",
+      },
+      {
+        value: "0",
+        label: "duplicate side effects across 34 fault tests",
+        source: "eval/fault_injection: 34 tests counted, including commit-then-timeout and concurrent duplicates",
+      },
+      {
+        value: "0.31 → 0.86",
+        label: "handoff recall after calibration",
+        source: "results/2026-10-15-handoff-calibration/metrics.json: 95% CI 0.72 to 0.93, n = 94",
+      },
+      {
+        value: "2 of 46",
+        label: "checker false positives on known-good answers",
+        source: "results/checker-catch-rate: invented numbers, dates and entities caught 23/23, 5/5, 4/4",
+      },
+    ],
+    repo: `${GH}/Voice-Desk`,
+    period: "2026",
+    featured: true,
+    hasDiagram: true,
+    caseStudy: {
+      problem:
+        "A support agent that speaks has no undo. Text gives a reader a moment to notice that an answer looks wrong, and a caller gets none: a fabricated refund window or an invented date is simply said, out loud, and acted upon. Two consequences follow. The sentence has to be checked before it reaches the speaker rather than after, and any claim that a change made the agent better has to survive a paired test rather than a demo, because a voice system has far too many ways to look improved on the call you chose to replay.",
+      approach:
+        "A turn flows from endpointing through transcription into a conversation loop that imports nothing from the audio layer, which is what makes a turn testable without a microphone. The loop retrieves over a hybrid of BM25 and vector search fused with reciprocal rank, calls the model, and passes each generated sentence to a grounding checker before anything is spoken. A sentence that cannot be traced to a retrieved passage does not get said; hard rules and a calibrated soft score decide between answering and handing off with a written summary. Tool calls go through an idempotency ledger backed by a partial unique index, so a commit followed by a timeout does not produce a second transfer. Improvements are measured by running a simulated caller population, generating a gap report, making exactly one change, and re-running on identical seeds.",
+      decisions: [
+        {
+          title: "Check grounding before the speaker, not after",
+          body: "The checker runs per sentence at a p95 of 0.07 milliseconds, which is what makes it affordable in the speaking path at all. It catches invented numbers, dates and entities at 23 of 23, 5 of 5 and 4 of 4, and fabricated policy claims at 7 of 8, against 2 false positives in 46 known-good answers. The 7 of 8 is the honest number: it is the category a template cannot fully cover, and the repo does not round it up.",
+        },
+        {
+          title: "One change per cycle, on identical seeds",
+          body: "The feedback loop runs a baseline, produces a gap report, applies a single corpus change, and re-runs the same 300 simulated calls with the same seed. The run directory records the corpus hash before and after and names the higher-ranked action that was deliberately skipped, so the result is attributable to one change rather than to a batch of them.",
+        },
+        {
+          title: "Report the paired test, not the difference",
+          body: "Containment moving from 0.737 to 0.793 is two overlapping confidence intervals and proves little on its own. The pairing is what carries it: the same calls, +17 improved and -0 regressed, McNemar exact p = 1.5e-5. The same cycle rerun on the live model moved the target intent +16 and -0, while other intents moved +14 and -22 at p = 0.24, which the repo calls sampling noise instead of a regression.",
+        },
+        {
+          title: "Make duplicate side effects structurally impossible",
+          body: "A partial unique index in Postgres is the ledger, so a retried transfer collides at the database rather than relying on the agent remembering. The fault suite drove 34 cases at it, including commit-then-timeout and five concurrent identical transfers, and the concurrent case resolved to one committed row. The race that test exposed was real and is written up rather than quietly fixed.",
+        },
+        {
+          title: "Label the agent behind every number",
+          body: "No API key was available while the measurement harness was built, so most behavioural figures come from an offline extractive agent, and every result says which agent produced it. A README that implied a live model would have been easier to read and worth nothing, and the list of what is still unmeasured, including voice latency over a real sample, sits beside the results rather than at the end.",
+        },
+      ],
+      learned:
+        "I set out to build the agent and ended up building the instrument. The measurement harness is most of this repository, and the part that changed how I work is the convention of keeping superseded run directories instead of deleting them: two of the fourteen are labelled superseded and remain, so the history of what I believed and when is recoverable. It is also where the uncomfortable results live. The retrieval sufficiency signal showed dense cosine at 0.93 AUC against the fused score's 0.51, which means the score I had been ranking with was the worse predictor of whether retrieval had actually found the answer.",
+    },
+  },
+  {
     slug: "adsight",
     name: "AdSight",
     tagline: "Ad campaign dashboard over 10,000 rows, measured against a naive build",
